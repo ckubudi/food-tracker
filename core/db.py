@@ -33,6 +33,14 @@ def _slug(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
+def _normalize(row) -> dict:
+    """Serializa datetime/date pra ISO string. Postgres devolve nativos; SQLite já é string."""
+    out = {}
+    for k, v in dict(row).items():
+        out[k] = v.isoformat() if hasattr(v, "isoformat") else v
+    return out
+
+
 # ---------- conexão ----------
 
 if USE_PG:
@@ -151,12 +159,11 @@ def salvar_refeicao(descricao: str, resultado_nutricao: dict,
 
 def refeicoes_do_dia(dia: str) -> "list[dict]":
     with conn() as c:
-        refs = list(c.execute(
+        refs = [_normalize(r) for r in c.execute(
             f"SELECT * FROM refeicoes WHERE dia={PH} ORDER BY timestamp", (dia,)
-        ))
-        refs = [dict(r) for r in refs]
+        )]
         for r in refs:
-            r["itens"] = [dict(i) for i in c.execute(
+            r["itens"] = [_normalize(i) for i in c.execute(
                 f"SELECT * FROM itens WHERE refeicao_id={PH}", (r["id"],)
             )]
         return refs
@@ -179,7 +186,7 @@ def total_do_dia(dia: str) -> dict:
 def serie_historica(n_dias: int = 30) -> dict:
     with conn() as c:
         cutoff = (date.today() - timedelta(days=n_dias)).isoformat()
-        rows = c.execute(
+        rows = [_normalize(r) for r in c.execute(
             f"""SELECT dia,
                        SUM(total_kcal)       AS kcal,
                        SUM(total_proteina_g) AS proteina_g,
@@ -190,14 +197,10 @@ def serie_historica(n_dias: int = 30) -> dict:
                 FROM refeicoes
                 WHERE dia >= {PH}
                 GROUP BY dia""", (cutoff,)
-        ).fetchall()
-
-        def _dia_str(d):
-            return d.isoformat() if hasattr(d, "isoformat") else str(d)
-
-        return {_dia_str(r["dia"]): {k: r[k] or 0 for k in
-                                     ("kcal", "proteina_g", "carbo_g", "gordura_g",
-                                      "fibra_g", "sodio_mg")}
+        ).fetchall()]
+        return {r["dia"]: {k: r[k] or 0 for k in
+                           ("kcal", "proteina_g", "carbo_g", "gordura_g",
+                            "fibra_g", "sodio_mg")}
                 for r in rows}
 
 
@@ -208,7 +211,7 @@ def desfazer_ultima() -> Optional[dict]:
         ).fetchone()
         if not row:
             return None
-        row = dict(row)
+        row = _normalize(row)
         c.execute(f"DELETE FROM refeicoes WHERE id={PH}", (row["id"],))
         return row
 
