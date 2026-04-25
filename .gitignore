@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.pyc
+data/food.db
+data/food.db-*
+pages/
+bot.log
+.vercel/
+.venv/
+venv/
+HANDOFF.md
+archive/
+

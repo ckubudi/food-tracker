@@ -1,0 +1,18 @@
+{
+    "metas_diarias": {
+        "kcal": 2200,
+        "proteina_g": 150,
+        "carbo_g": 220,
+        "gordura_g": 70,
+        "fibra_g": 25
+    },
+    "timezone": "America/Sao_Paulo",
+    "telegram_chat_id": "6896215023",
+    "claude_model": "claude-haiku-4-5-20251001",
+    "report_url_template": "https://food-tracker-ckubudi.vercel.app/dashboard/<MCP_AUTH_SECRET>",
+    "fontes_nutricao": {
+        "taco_local": true,
+        "openfoodfacts": true,
+        "claude_web_search": true
+    }
+}
