@@ -42,9 +42,9 @@ def _html_tabela_refeicoes(refs: list) -> str:
     if not refs:
         return '<p style="color:#888">Nenhuma refeição registrada hoje.</p>'
 
-    html = ('<table class="stats-table"><thead><tr>'
+    html = ('<div class="table-wrap"><table class="stats-table"><thead><tr>'
             '<th>Hora</th><th>Descrição</th><th>kcal</th><th>P</th>'
-            '<th>C</th><th>G</th><th>Itens</th></tr></thead><tbody>')
+            '<th>C</th><th>G</th></tr></thead><tbody>')
     for r in refs:
         hora = r["timestamp"][11:16]
         itens_txt = ", ".join(
@@ -52,13 +52,14 @@ def _html_tabela_refeicoes(refs: list) -> str:
              (f' ({i["qtd_g"]:.0f}g)' if i.get("qtd_g") else ""))
             for i in r.get("itens", [])
         )
-        html += (f'<tr><td>{hora}</td><td>{r["descricao"]}</td>'
+        html += (f'<tr><td>{hora}</td>'
+                 f'<td>{r["descricao"]}'
+                 f'<div style="font-size:.8em; color:#888; margin-top:2px">{itens_txt}</div></td>'
                  f'<td>{(r["total_kcal"] or 0):.0f}</td>'
                  f'<td>{(r["total_proteina_g"] or 0):.0f}</td>'
                  f'<td>{(r["total_carbo_g"] or 0):.0f}</td>'
-                 f'<td>{(r["total_gordura_g"] or 0):.0f}</td>'
-                 f'<td style="font-size:.85em; color:#666">{itens_txt}</td></tr>')
-    html += '</tbody></table>'
+                 f'<td>{(r["total_gordura_g"] or 0):.0f}</td></tr>')
+    html += '</tbody></table></div>'
     return html
 
 
@@ -141,36 +142,58 @@ def _adherence_7d(por_dia: dict, metas: dict) -> str:
 
 
 CSS = """
-body { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 1100px;
-       margin: 30px auto; padding: 0 20px; background: #fafafa; color: #333; line-height: 1.6; }
-h1 { color: #1a237e; border-bottom: 3px solid #1a237e; padding-bottom: 10px; }
-h2 { color: #283593; margin-top: 35px; border-bottom: 1px solid #ccc; padding-bottom: 6px; }
-h3 { color: #3949ab; margin-top: 25px; }
-.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-               gap: 12px; margin: 20px 0; }
+* { box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, sans-serif;
+       max-width: 1100px; margin: 20px auto; padding: 0 16px;
+       background: #fafafa; color: #333; line-height: 1.5; }
+h1 { color: #1a237e; border-bottom: 3px solid #1a237e; padding-bottom: 10px;
+     font-size: 1.6em; margin: 0 0 6px; }
+h2 { color: #283593; margin-top: 30px; border-bottom: 1px solid #ccc;
+     padding-bottom: 6px; font-size: 1.25em; }
+h3 { color: #3949ab; margin-top: 22px; font-size: 1.1em; }
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+               gap: 10px; margin: 16px 0; }
 .metric-box { background: white; border: 1px solid #ddd; border-radius: 10px;
-              padding: 18px; text-align: center; }
-.metric-box .value { font-size: 2em; font-weight: bold; color: #1a237e; }
+              padding: 14px 12px; text-align: center; }
+.metric-box .value { font-size: 1.8em; font-weight: bold; color: #1a237e; line-height: 1.1; }
 .metric-box .unit { font-size: .5em; color: #888; margin-left: 3px; }
-.metric-box .label { font-size: .9em; color: #555; margin-bottom: 10px; }
+.metric-box .label { font-size: .85em; color: #555; margin-bottom: 8px; }
 .metric-box.green .value { color: #2e7d32; }
 .metric-box.red .value { color: #c62828; }
 .metric-box.neutral .value { color: #f57f17; }
-.progress-wrap { position: relative; height: 18px; background: #e0e0e0; border-radius: 9px;
+.progress-wrap { position: relative; height: 16px; background: #e0e0e0; border-radius: 8px;
                  overflow: hidden; margin-top: 8px; }
 .progress-fill { height: 100%; transition: width .3s; }
 .progress-label { position: absolute; top: 0; left: 0; right: 0; text-align: center;
-                  font-size: .75em; line-height: 18px; color: #222; font-weight: 600; }
-.stats-table { border-collapse: collapse; width: 100%; margin: 15px 0; background: white; }
-.stats-table th { background: #1a237e; color: white; padding: 10px 14px; text-align: left; }
-.stats-table td { padding: 8px 14px; border-bottom: 1px solid #eee; }
+                  font-size: .72em; line-height: 16px; color: #222; font-weight: 600; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch;
+              border-radius: 6px; margin: 12px 0;
+              background: white; border: 1px solid #eee; }
+.stats-table { border-collapse: collapse; width: 100%; min-width: 520px; }
+.stats-table th { background: #1a237e; color: white; padding: 9px 12px;
+                  text-align: left; font-size: .9em; white-space: nowrap; }
+.stats-table td { padding: 8px 12px; border-bottom: 1px solid #eee; vertical-align: top; }
 .stats-table tbody tr:nth-child(even) { background: #f5f5f5; }
 .conclusion { background: #e8eaf6; border-left: 4px solid #1a237e;
-              padding: 14px 18px; margin: 20px 0; border-radius: 4px; }
+              padding: 12px 16px; margin: 16px 0; border-radius: 4px; font-size: .95em; }
 .nota { background: #fff3e0; border-left: 4px solid #ff9800;
-        padding: 12px 16px; margin: 15px 0; font-size: .9em; }
-.footer { margin-top: 40px; color: #888; font-size: 12px;
+        padding: 10px 14px; margin: 12px 0; font-size: .9em; }
+.footer { margin-top: 32px; color: #888; font-size: 11px;
           border-top: 1px solid #ccc; padding-top: 10px; }
+.js-plotly-plot { max-width: 100%; }
+
+@media (max-width: 600px) {
+    body { margin: 10px auto; padding: 0 10px; line-height: 1.4; }
+    h1 { font-size: 1.3em; padding-bottom: 6px; }
+    h2 { font-size: 1.1em; margin-top: 22px; }
+    h3 { font-size: 1em; margin-top: 16px; }
+    .metric-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .metric-box { padding: 10px 8px; }
+    .metric-box .value { font-size: 1.5em; }
+    .metric-box .label { font-size: .78em; }
+    .stats-table th, .stats-table td { padding: 7px 9px; font-size: .85em; }
+    .conclusion, .nota { font-size: .88em; padding: 10px 12px; }
+}
 """
 
 
