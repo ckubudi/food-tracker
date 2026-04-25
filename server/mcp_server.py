@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from starlette.responses import HTMLResponse, PlainTextResponse
 from starlette.routing import Route
 
@@ -109,6 +110,11 @@ mcp = FastMCP(
     streamable_http_path=f"/mcp/{_SECRET}",
     stateless_http=True,
     json_response=True,
+    # Atrás de proxy (Vercel): Host varia (vercel.app, *.vercel.app, claude.ai).
+    # Auth real é pelo segredo no path; DNS rebinding não se aplica aqui.
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=False,
+    ),
 )
 
 
