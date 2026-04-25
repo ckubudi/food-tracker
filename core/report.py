@@ -9,14 +9,10 @@ from pathlib import Path
 
 from core import db
 from core.db import _now_local, hoje_local
+from core.settings import get_metas, get_user_name
 
 ROOT = Path(__file__).resolve().parent.parent
-CONFIG_PATH = ROOT / "config.json"
 OUTPUT_PATH = ROOT / "pages" / "index.html"
-
-
-def _load(path):
-    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _barra_progresso(valor: float, meta: float, cor: str) -> str:
@@ -197,10 +193,11 @@ h3 { color: #3949ab; margin-top: 22px; font-size: 1.1em; }
 """
 
 
-def gerar_html(config_path: Path = CONFIG_PATH) -> str:
+def gerar_html() -> str:
     """Monta o HTML do dashboard e devolve como string."""
-    cfg = _load(config_path)
-    metas = cfg["metas_diarias"]
+    metas = get_metas()
+    user_name = get_user_name()
+    titulo_user = f" — {user_name}" if user_name else ""
 
     hoje = hoje_local()
     por_dia = db.serie_historica(30)
@@ -212,10 +209,10 @@ def gerar_html(config_path: Path = CONFIG_PATH) -> str:
     return f"""<!doctype html>
 <html lang="pt-br"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Food Tracker — {hoje}</title>
+<title>Food Tracker{titulo_user} — {hoje}</title>
 <style>{CSS}</style></head>
 <body>
-<h1>🍽️ Food Tracker</h1>
+<h1>🍽️ Food Tracker{titulo_user}</h1>
 <p><strong>{hoje}</strong> · atualizado {agora}</p>
 
 <h2>Hoje</h2>
@@ -245,8 +242,8 @@ descrição, busca as tabelas e atualiza este dashboard.
 </body></html>"""
 
 
-def gerar(output_path: Path = OUTPUT_PATH, config_path: Path = CONFIG_PATH) -> Path:
-    html = gerar_html(config_path)
+def gerar(output_path: Path = OUTPUT_PATH) -> Path:
+    html = gerar_html()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")
     return output_path

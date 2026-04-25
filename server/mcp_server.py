@@ -34,8 +34,8 @@ sys.path.insert(0, str(ROOT))
 
 from core import db, nutrition
 from core.report import gerar_html
+from core.settings import get_metas, get_user_name
 
-CONFIG_PATH = ROOT / "config.json"
 ENV_PATH = ROOT / ".env"
 
 logging.basicConfig(level=logging.INFO,
@@ -54,8 +54,6 @@ def _load_env():
         os.environ.setdefault(k.strip(), v.strip())
 
 
-def _load_cfg() -> dict:
-    return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
 
 
 _load_env()
@@ -151,13 +149,12 @@ def registrar_refeicao(descricao: str, itens: list[dict]) -> dict:
           "erros": [...],  -- itens que falharam no lookup
         }
     """
-    cfg = _load_cfg()
     resultado = nutrition.resolver_refeicao(itens)
     refeicao_id = db.salvar_refeicao(descricao, resultado)
 
     dia = db.hoje_local()
     total_dia = db.total_do_dia(dia)
-    metas = cfg["metas_diarias"]
+    metas = get_metas()
 
     pct = {}
     for k, meta in metas.items():
@@ -174,7 +171,6 @@ def registrar_refeicao(descricao: str, itens: list[dict]) -> dict:
         "metas": metas,
         "percentual_dia": pct,
         "erros": erros,
-        "dashboard_url": cfg.get("report_url"),
     }
 
 
@@ -185,11 +181,10 @@ def resumo_dia(dia: Optional[str] = None) -> dict:
     Args:
         dia: "YYYY-MM-DD". Default = hoje.
     """
-    cfg = _load_cfg()
     dia = dia or db.hoje_local()
     total = db.total_do_dia(dia)
     refs = db.refeicoes_do_dia(dia)
-    metas = cfg["metas_diarias"]
+    metas = get_metas()
 
     pct = {}
     for k, meta in metas.items():
@@ -216,7 +211,6 @@ def resumo_dia(dia: Optional[str] = None) -> dict:
             }
             for r in refs
         ],
-        "report_url": cfg.get("report_url"),
     }
 
 
@@ -239,10 +233,10 @@ def serie_historica(n_dias: int = 7) -> dict:
     return db.serie_historica(n_dias)
 
 
-@mcp.tool()
-def get_metas() -> dict:
+@mcp.tool(name="get_metas")
+def _tool_get_metas() -> dict:
     """Retorna metas diárias configuradas."""
-    return _load_cfg()["metas_diarias"]
+    return get_metas()
 
 
 @mcp.tool()

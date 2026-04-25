@@ -1,4 +1,5 @@
 {
+    "_comment": "Defaults globais. Metas por usuário vêm da env var METAS_JSON (Vercel). Nome via USER_NAME.",
     "metas_diarias": {
         "kcal": 2900,
         "proteina_g": 140,
@@ -7,9 +8,6 @@
         "fibra_g": 35
     },
     "timezone": "America/Sao_Paulo",
-    "telegram_chat_id": "6896215023",
-    "claude_model": "claude-haiku-4-5-20251001",
-    "report_url_template": "https://food-tracker-ckubudi.vercel.app/dashboard/<MCP_AUTH_SECRET>",
     "fontes_nutricao": {
         "taco_local": true,
         "openfoodfacts": true,
