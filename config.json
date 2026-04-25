@@ -1,10 +1,10 @@
 {
     "metas_diarias": {
-        "kcal": 2200,
-        "proteina_g": 150,
-        "carbo_g": 220,
+        "kcal": 2900,
+        "proteina_g": 140,
+        "carbo_g": 425,
         "gordura_g": 70,
-        "fibra_g": 25
+        "fibra_g": 35
     },
     "timezone": "America/Sao_Paulo",
     "telegram_chat_id": "6896215023",
