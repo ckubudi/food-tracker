@@ -155,7 +155,7 @@ def registrar_refeicao(descricao: str, itens: list[dict]) -> dict:
     resultado = nutrition.resolver_refeicao(itens)
     refeicao_id = db.salvar_refeicao(descricao, resultado)
 
-    dia = date.today().isoformat()
+    dia = db.hoje_local()
     total_dia = db.total_do_dia(dia)
     metas = cfg["metas_diarias"]
 
@@ -186,7 +186,7 @@ def resumo_dia(dia: Optional[str] = None) -> dict:
         dia: "YYYY-MM-DD". Default = hoje.
     """
     cfg = _load_cfg()
-    dia = dia or date.today().isoformat()
+    dia = dia or db.hoje_local()
     total = db.total_do_dia(dia)
     refs = db.refeicoes_do_dia(dia)
     metas = cfg["metas_diarias"]
@@ -223,7 +223,7 @@ def resumo_dia(dia: Optional[str] = None) -> dict:
 @mcp.tool()
 def listar_refeicoes(dia: Optional[str] = None) -> list[dict]:
     """Lista refeições de um dia (default hoje) com itens detalhados."""
-    dia = dia or date.today().isoformat()
+    dia = dia or db.hoje_local()
     return db.refeicoes_do_dia(dia)
 
 

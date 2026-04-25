@@ -8,6 +8,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from core import db
+from core.db import _now_local, hoje_local
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "config.json"
@@ -62,7 +63,7 @@ def _html_tabela_refeicoes(refs: list) -> str:
 
 
 def _plotly_30d(por_dia: dict, metas: dict) -> str:
-    hoje = date.today()
+    hoje = _now_local().date()
     dias = [(hoje - timedelta(days=i)).isoformat() for i in range(29, -1, -1)]
     kcal = [por_dia.get(d, {}).get("kcal", 0) for d in dias]
     prot = [por_dia.get(d, {}).get("proteina_g", 0) for d in dias]
@@ -106,7 +107,7 @@ Plotly.newPlot('chart-macros', [
 
 
 def _adherence_7d(por_dia: dict, metas: dict) -> str:
-    hoje = date.today()
+    hoje = _now_local().date()
     dias = [(hoje - timedelta(days=i)).isoformat() for i in range(7)]
     cont = {"kcal": 0, "proteina_g": 0, "carbo_g": 0, "gordura_g": 0}
     dias_com_registro = 0
@@ -178,12 +179,12 @@ def gerar_html(config_path: Path = CONFIG_PATH) -> str:
     cfg = _load(config_path)
     metas = cfg["metas_diarias"]
 
-    hoje = date.today().isoformat()
+    hoje = hoje_local()
     por_dia = db.serie_historica(30)
     dia_atual = por_dia.get(hoje, {"kcal": 0, "proteina_g": 0, "carbo_g": 0,
                                    "gordura_g": 0, "fibra_g": 0, "sodio_mg": 0})
     refs_hoje = db.refeicoes_do_dia(hoje)
-    agora = datetime.now().strftime("%d/%m/%Y %H:%M")
+    agora = _now_local().strftime("%d/%m/%Y %H:%M")
 
     return f"""<!doctype html>
 <html lang="pt-br"><head>

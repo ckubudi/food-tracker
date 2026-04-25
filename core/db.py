@@ -16,6 +16,24 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Iterator, Optional
+from zoneinfo import ZoneInfo
+
+TZ_LOCAL = ZoneInfo(os.environ.get("TZ_LOCAL", "America/Sao_Paulo"))
+
+
+def _now_local() -> datetime:
+    return datetime.now(TZ_LOCAL)
+
+
+def hoje_local() -> str:
+    return _now_local().date().isoformat()
+
+
+def _to_local(dt: datetime) -> datetime:
+    """Converte datetime tz-aware pro fuso local. Se naïve, assume UTC (vindo do SQLite)."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+    return dt.astimezone(TZ_LOCAL)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -34,10 +52,16 @@ def _slug(s: str) -> str:
 
 
 def _normalize(row) -> dict:
-    """Serializa datetime/date pra ISO string. Postgres devolve nativos; SQLite já é string."""
+    """Serializa datetime/date pra ISO string em fuso local.
+    Postgres devolve nativos com tz; SQLite devolve string já formatada."""
     out = {}
     for k, v in dict(row).items():
-        out[k] = v.isoformat() if hasattr(v, "isoformat") else v
+        if isinstance(v, datetime):
+            out[k] = _to_local(v).isoformat(timespec="seconds")
+        elif hasattr(v, "isoformat"):
+            out[k] = v.isoformat()
+        else:
+            out[k] = v
     return out
 
 
@@ -108,8 +132,13 @@ def init():
 
 def salvar_refeicao(descricao: str, resultado_nutricao: dict,
                     timestamp: Optional[str] = None) -> int:
-    ts = timestamp or datetime.now().isoformat(timespec="seconds")
-    dia = ts[:10]
+    if timestamp:
+        ts = timestamp
+        dia = ts[:10]
+    else:
+        now = _now_local()
+        ts = now.isoformat(timespec="seconds")
+        dia = now.date().isoformat()
     tot = resultado_nutricao["total"]
 
     with conn() as c:
