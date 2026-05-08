@@ -14,6 +14,11 @@ from core.settings import get_metas, get_user_name
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = ROOT / "pages" / "index.html"
 
+# URL da foto do Arnold pra celebrar meta de proteina batida.
+# Troque pela URL que quiser (Imgur, Wikipedia commons, ou um arquivo em pages/assets/).
+# Vazio = mostra só o texto sem imagem.
+ARNOLD_IMG_URL = ""
+
 
 def _barra_progresso(valor: float, meta: float, cor: str) -> str:
     pct = min(valor / meta * 100, 130) if meta else 0
@@ -216,6 +221,20 @@ h3 { color: #3949ab; margin-top: 22px; font-size: 1.1em; }
   .day-nav h2 { font-size: 1.05em; }
   .nav-btn { padding: 4px 9px; min-width: 32px; }
 }
+.protein-win { display: flex; align-items: center; gap: 14px;
+               background: linear-gradient(90deg, #e8f5e9, #f1f8e9);
+               border: 2px solid #2e7d32; border-radius: 10px;
+               padding: 14px 18px; margin: 16px 0;
+               box-shadow: 0 2px 6px rgba(46,125,50,.15); }
+.protein-win .arnold-img { height: 90px; width: auto; border-radius: 8px;
+                           object-fit: cover; flex-shrink: 0; }
+.protein-win .protein-msg { color: #1b5e20; font-size: 1.05em; line-height: 1.4; }
+.protein-win .protein-msg strong { font-size: 1.3em; letter-spacing: .5px; }
+@media (max-width: 600px) {
+  .protein-win { padding: 10px 12px; gap: 10px; }
+  .protein-win .arnold-img { height: 64px; }
+  .protein-win .protein-msg { font-size: .95em; }
+}
 .conclusion { background: #e8eaf6; border-left: 4px solid #1a237e;
               padding: 12px 16px; margin: 16px 0; border-radius: 4px; font-size: .95em; }
 .nota { background: #fff3e0; border-left: 4px solid #ff9800;
@@ -243,6 +262,18 @@ _TOTAL_VAZIO = {"kcal": 0, "proteina_g": 0, "carbo_g": 0,
                 "gordura_g": 0, "fibra_g": 0, "sodio_mg": 0}
 
 
+def _banner_proteina_batida(prot: float, meta: float) -> str:
+    if not meta or prot < meta:
+        return ""
+    img = (f'<img src="{ARNOLD_IMG_URL}" alt="Arnold parabenizando" '
+           f'class="arnold-img">') if ARNOLD_IMG_URL else ""
+    return (f'<div class="protein-win">{img}'
+            f'<div class="protein-msg">'
+            f'<strong>YOU DID IT! 💪</strong><br>'
+            f'Meta de proteína batida: {prot:.0f}g / {meta:.0f}g'
+            f'</div></div>')
+
+
 def _bloco_dia(totais: dict, refs: list, metas: dict) -> str:
     return f"""<div class="metric-grid">
 {_html_metric("Calorias", totais["kcal"], metas["kcal"], " kcal", "#3949ab")}
@@ -251,6 +282,7 @@ def _bloco_dia(totais: dict, refs: list, metas: dict) -> str:
 {_html_metric("Gordura", totais["gordura_g"], metas["gordura_g"], "g", "#f57f17")}
 {_html_metric("Fibra", totais["fibra_g"], metas["fibra_g"], "g", "#6a1b9a")}
 </div>
+{_banner_proteina_batida(totais["proteina_g"], metas["proteina_g"])}
 <h3>Refeições</h3>
 {_html_tabela_refeicoes(refs)}"""
 
