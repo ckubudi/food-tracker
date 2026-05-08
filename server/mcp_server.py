@@ -33,6 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from core import db, nutrition
+from core.db import TZ_LOCAL, _now_local
 from core.report import gerar_html
 from core.settings import get_metas, get_user_name
 
@@ -119,7 +120,8 @@ mcp = FastMCP(
 # ---------- tools ----------
 
 @mcp.tool()
-def registrar_refeicao(descricao: str, itens: list[dict]) -> dict:
+def registrar_refeicao(descricao: str, itens: list[dict],
+                       dia: Optional[str] = None) -> dict:
     """Registra uma refeição com seus itens e retorna macros + acumulado do dia.
 
     Args:
@@ -137,12 +139,16 @@ def registrar_refeicao(descricao: str, itens: list[dict]) -> dict:
             base (str): "por_porcao" (default) ou "por_100g" -- só relevante
                 quando macros vem preenchido.
             fonte_url (str | null): URL da fonte (para restaurante/marca).
+        dia: opcional, "YYYY-MM-DD". Default = hoje. Use pra logar refeições de
+            dias passados (ex: "ontem comi X" → passe a data de ontem). A hora
+            usada é a hora atual (mantém ordenação cronológica dentro do dia).
 
     Retorna:
         {
           "total_refeicao": {kcal, proteina_g, ...},
           "itens_resolvidos": [...],  -- com macros + fonte + nome_encontrado
-          "total_dia": {kcal, ...},
+          "dia": "YYYY-MM-DD",  -- dia em que a refeição foi registrada
+          "total_dia": {kcal, ...},  -- totais do dia da refeição
           "metas": {...},
           "percentual_dia": {kcal, proteina_g, ...},  -- % das metas
           "refeicao_id": int,
@@ -150,10 +156,20 @@ def registrar_refeicao(descricao: str, itens: list[dict]) -> dict:
         }
     """
     resultado = nutrition.resolver_refeicao(itens)
-    refeicao_id = db.salvar_refeicao(descricao, resultado)
 
-    dia = db.hoje_local()
-    total_dia = db.total_do_dia(dia)
+    timestamp = None
+    dia_efetivo = dia or db.hoje_local()
+    if dia:
+        now = _now_local()
+        target = datetime.strptime(dia, "%Y-%m-%d").replace(
+            hour=now.hour, minute=now.minute, second=now.second,
+            microsecond=0, tzinfo=TZ_LOCAL,
+        )
+        timestamp = target.isoformat(timespec="seconds")
+
+    refeicao_id = db.salvar_refeicao(descricao, resultado, timestamp=timestamp)
+
+    total_dia = db.total_do_dia(dia_efetivo)
     metas = get_metas()
 
     pct = {}
@@ -165,6 +181,7 @@ def registrar_refeicao(descricao: str, itens: list[dict]) -> dict:
 
     return {
         "refeicao_id": refeicao_id,
+        "dia": dia_efetivo,
         "total_refeicao": resultado["total"],
         "itens_resolvidos": resultado["itens"],
         "total_dia": total_dia,

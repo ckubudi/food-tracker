@@ -38,34 +38,65 @@ def _html_tabela_refeicoes(refs: list) -> str:
     if not refs:
         return '<p style="color:#888">Nenhuma refeição registrada hoje.</p>'
 
-    html = ('<div class="table-wrap"><table class="stats-table"><thead><tr>'
-            '<th>Hora</th><th>Descrição</th><th>kcal</th><th>P</th>'
+    html = ('<div class="table-wrap"><table class="stats-table meals"><thead><tr>'
+            '<th></th><th>Hora</th><th>Descrição</th><th>kcal</th><th>P</th>'
             '<th>C</th><th>G</th></tr></thead><tbody>')
     for r in refs:
         hora = r["timestamp"][11:16]
-        itens_txt = ", ".join(
-            (f'{i["nome"] or "?"}' +
-             (f' ({i["qtd_g"]:.0f}g)' if i.get("qtd_g") else ""))
-            for i in r.get("itens", [])
-        )
-        html += (f'<tr><td>{hora}</td>'
-                 f'<td>{r["descricao"]}'
-                 f'<div style="font-size:.8em; color:#888; margin-top:2px">{itens_txt}</div></td>'
+        itens = r.get("itens") or []
+
+        # linha principal (clicável)
+        html += (f'<tr class="meal-row" onclick="toggleDetail(this)">'
+                 f'<td class="chev">▸</td>'
+                 f'<td>{hora}</td>'
+                 f'<td>{r["descricao"]}</td>'
                  f'<td>{(r["total_kcal"] or 0):.0f}</td>'
                  f'<td>{(r["total_proteina_g"] or 0):.0f}</td>'
                  f'<td>{(r["total_carbo_g"] or 0):.0f}</td>'
                  f'<td>{(r["total_gordura_g"] or 0):.0f}</td></tr>')
+
+        # linha de detalhe (escondida por default)
+        if itens:
+            detail = ('<tr class="meal-detail" hidden><td></td>'
+                      '<td colspan="6"><table class="item-table"><thead><tr>'
+                      '<th>Item</th><th>qtd</th><th>kcal</th><th>P</th>'
+                      '<th>C</th><th>G</th><th>Fibra</th><th>fonte</th>'
+                      '</tr></thead><tbody>')
+            for i in itens:
+                if i.get("erro"):
+                    detail += (f'<tr><td colspan="8" style="color:#c62828">'
+                               f'⚠️ {i.get("nome") or "?"}: {i["erro"]}</td></tr>')
+                    continue
+                qtd = (f'{i["qtd_g"]:.0f}g' if i.get("qtd_g")
+                       else (f'{i["qtd_porcoes"]:g}×' if i.get("qtd_porcoes") else "—"))
+                fonte = i.get("fonte") or "—"
+                if i.get("fonte_url"):
+                    fonte = f'<a href="{i["fonte_url"]}" target="_blank" rel="noopener">{fonte}</a>'
+                nome_show = i.get("nome") or "?"
+                if i.get("nome_encontrado") and i["nome_encontrado"].lower() != nome_show.lower():
+                    nome_show += f'<div style="font-size:.8em; color:#888">→ {i["nome_encontrado"]}</div>'
+                detail += (f'<tr><td>{nome_show}</td><td>{qtd}</td>'
+                           f'<td>{(i.get("kcal") or 0):.0f}</td>'
+                           f'<td>{(i.get("proteina_g") or 0):.1f}</td>'
+                           f'<td>{(i.get("carbo_g") or 0):.1f}</td>'
+                           f'<td>{(i.get("gordura_g") or 0):.1f}</td>'
+                           f'<td>{(i.get("fibra_g") or 0):.1f}</td>'
+                           f'<td style="font-size:.8em; color:#666">{fonte}</td></tr>')
+            detail += '</tbody></table></td></tr>'
+            html += detail
+
     html += '</tbody></table></div>'
     return html
 
 
 def _plotly_30d(por_dia: dict, metas: dict) -> str:
-    hoje = _now_local().date()
-    dias = [(hoje - timedelta(days=i)).isoformat() for i in range(29, -1, -1)]
-    kcal = [por_dia.get(d, {}).get("kcal", 0) for d in dias]
-    prot = [por_dia.get(d, {}).get("proteina_g", 0) for d in dias]
-    carb = [por_dia.get(d, {}).get("carbo_g", 0) for d in dias]
-    gord = [por_dia.get(d, {}).get("gordura_g", 0) for d in dias]
+    dias = sorted(d for d, vals in por_dia.items() if (vals.get("kcal") or 0) > 0)
+    if not dias:
+        return '<p style="color:#888">Sem registros nos últimos 30 dias.</p>'
+    kcal = [por_dia[d]["kcal"] for d in dias]
+    prot = [por_dia[d]["proteina_g"] for d in dias]
+    carb = [por_dia[d]["carbo_g"] for d in dias]
+    gord = [por_dia[d]["gordura_g"] for d in dias]
 
     dias_js = json.dumps(dias)
     return f"""
@@ -170,6 +201,21 @@ h3 { color: #3949ab; margin-top: 22px; font-size: 1.1em; }
                   text-align: left; font-size: .9em; white-space: nowrap; }
 .stats-table td { padding: 8px 12px; border-bottom: 1px solid #eee; vertical-align: top; }
 .stats-table tbody tr:nth-child(even) { background: #f5f5f5; }
+.day-nav { display: flex; align-items: center; gap: 10px; margin: 24px 0 8px;
+           border-bottom: 1px solid #ccc; padding-bottom: 6px; }
+.day-nav h2 { flex: 1; text-align: center; margin: 0; border: none; padding: 0;
+              font-size: 1.25em; color: #283593; }
+.nav-btn { background: white; border: 1px solid #c5cae9; color: #1a237e;
+           padding: 4px 12px; border-radius: 6px; font-size: 1.1em;
+           cursor: pointer; min-width: 36px; line-height: 1.4;
+           font-family: inherit; }
+.nav-btn:hover:not(:disabled) { background: #e8eaf6; }
+.nav-btn:disabled { color: #bbb; border-color: #eee; cursor: default; }
+.nav-hoje { font-size: .85em; padding: 4px 10px; }
+@media (max-width: 600px) {
+  .day-nav h2 { font-size: 1.05em; }
+  .nav-btn { padding: 4px 9px; min-width: 32px; }
+}
 .conclusion { background: #e8eaf6; border-left: 4px solid #1a237e;
               padding: 12px 16px; margin: 16px 0; border-radius: 4px; font-size: .95em; }
 .nota { background: #fff3e0; border-left: 4px solid #ff9800;
@@ -193,6 +239,22 @@ h3 { color: #3949ab; margin-top: 22px; font-size: 1.1em; }
 """
 
 
+_TOTAL_VAZIO = {"kcal": 0, "proteina_g": 0, "carbo_g": 0,
+                "gordura_g": 0, "fibra_g": 0, "sodio_mg": 0}
+
+
+def _bloco_dia(totais: dict, refs: list, metas: dict) -> str:
+    return f"""<div class="metric-grid">
+{_html_metric("Calorias", totais["kcal"], metas["kcal"], " kcal", "#3949ab")}
+{_html_metric("Proteína", totais["proteina_g"], metas["proteina_g"], "g", "#2e7d32")}
+{_html_metric("Carboidrato", totais["carbo_g"], metas["carbo_g"], "g", "#1565c0")}
+{_html_metric("Gordura", totais["gordura_g"], metas["gordura_g"], "g", "#f57f17")}
+{_html_metric("Fibra", totais["fibra_g"], metas["fibra_g"], "g", "#6a1b9a")}
+</div>
+<h3>Refeições</h3>
+{_html_tabela_refeicoes(refs)}"""
+
+
 def gerar_html() -> str:
     """Monta o HTML do dashboard e devolve como string."""
     metas = get_metas()
@@ -201,10 +263,22 @@ def gerar_html() -> str:
 
     hoje = hoje_local()
     por_dia = db.serie_historica(30)
-    dia_atual = por_dia.get(hoje, {"kcal": 0, "proteina_g": 0, "carbo_g": 0,
-                                   "gordura_g": 0, "fibra_g": 0, "sodio_mg": 0})
-    refs_hoje = db.refeicoes_do_dia(hoje)
     agora = _now_local().strftime("%d/%m/%Y %H:%M")
+
+    hoje_d = _now_local().date()
+    dias_lista = [(hoje_d - timedelta(days=i)).isoformat() for i in range(30)]
+
+    blocos = []
+    for d in dias_lista:
+        totais = por_dia.get(d) or _TOTAL_VAZIO
+        refs = db.refeicoes_do_dia(d)
+        hidden = "" if d == hoje else "hidden"
+        blocos.append(
+            f'<div class="day-view" data-dia="{d}" {hidden}>'
+            f'{_bloco_dia(totais, refs, metas)}</div>'
+        )
+    day_views = "\n".join(blocos)
+    dias_js = json.dumps(dias_lista)
 
     return f"""<!doctype html>
 <html lang="pt-br"><head>
@@ -213,19 +287,18 @@ def gerar_html() -> str:
 <style>{CSS}</style></head>
 <body>
 <h1>🍽️ Food Tracker{titulo_user}</h1>
-<p><strong>{hoje}</strong> · atualizado {agora}</p>
+<p style="color:#888; font-size:.9em">atualizado {agora}</p>
 
-<h2>Hoje</h2>
-<div class="metric-grid">
-{_html_metric("Calorias", dia_atual["kcal"], metas["kcal"], " kcal", "#3949ab")}
-{_html_metric("Proteína", dia_atual["proteina_g"], metas["proteina_g"], "g", "#2e7d32")}
-{_html_metric("Carboidrato", dia_atual["carbo_g"], metas["carbo_g"], "g", "#1565c0")}
-{_html_metric("Gordura", dia_atual["gordura_g"], metas["gordura_g"], "g", "#f57f17")}
-{_html_metric("Fibra", dia_atual["fibra_g"], metas["fibra_g"], "g", "#6a1b9a")}
+<div class="day-nav">
+<button id="btn-prev" class="nav-btn" title="Dia anterior (←)">‹</button>
+<h2 id="day-title">Hoje</h2>
+<button id="btn-next" class="nav-btn" title="Próximo dia (→)">›</button>
+<button id="btn-hoje" class="nav-btn nav-hoje" title="Voltar pra hoje">Hoje</button>
 </div>
 
-<h3>Refeições do dia</h3>
-{_html_tabela_refeicoes(refs_hoje)}
+<div id="day-views">
+{day_views}
+</div>
 
 <h2>Últimos 30 dias</h2>
 {_plotly_30d(por_dia, metas)}
@@ -239,6 +312,64 @@ descrição, busca as tabelas e atualiza este dashboard.
 </div>
 
 <div class="footer">Food Tracker · fontes: TACO 4ª ed. (UNICAMP) · Open Food Facts · restaurantes via Claude web_search</div>
+
+<script>
+function toggleDetail(row) {{
+  var d = row.nextElementSibling;
+  if (!d || !d.classList.contains("meal-detail")) return;
+  if (d.hasAttribute("hidden")) {{ d.removeAttribute("hidden"); row.classList.add("open"); }}
+  else {{ d.setAttribute("hidden", ""); row.classList.remove("open"); }}
+}}
+
+(function () {{
+  var dias = {dias_js};  // ordenado: hoje primeiro
+  var idx = 0;
+  var views = {{}};
+  document.querySelectorAll(".day-view").forEach(function (v) {{
+    views[v.dataset.dia] = v;
+  }});
+  var title = document.getElementById("day-title");
+  var btnPrev = document.getElementById("btn-prev");
+  var btnNext = document.getElementById("btn-next");
+  var btnHoje = document.getElementById("btn-hoje");
+
+  function fmt(d) {{
+    var dt = new Date(d + "T00:00:00");
+    var s = dt.toLocaleDateString("pt-BR", {{
+      weekday: "short", day: "2-digit", month: "short"
+    }});
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }}
+  function label(i) {{
+    if (i === 0) return "Hoje · " + fmt(dias[0]);
+    if (i === 1) return "Ontem · " + fmt(dias[1]);
+    return fmt(dias[i]);
+  }}
+  function show(i) {{
+    if (i < 0 || i >= dias.length) return;
+    idx = i;
+    Object.keys(views).forEach(function (k) {{
+      if (k === dias[i]) views[k].removeAttribute("hidden");
+      else views[k].setAttribute("hidden", "");
+    }});
+    title.textContent = label(i);
+    btnPrev.disabled = i >= dias.length - 1;
+    btnNext.disabled = i <= 0;
+    btnHoje.disabled = i === 0;
+  }}
+
+  btnPrev.addEventListener("click", function () {{ show(idx + 1); }});
+  btnNext.addEventListener("click", function () {{ show(idx - 1); }});
+  btnHoje.addEventListener("click", function () {{ show(0); }});
+  document.addEventListener("keydown", function (e) {{
+    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+    if (e.key === "ArrowLeft") show(idx + 1);
+    else if (e.key === "ArrowRight") show(idx - 1);
+  }});
+
+  show(0);
+}})();
+</script>
 </body></html>"""
 
 
