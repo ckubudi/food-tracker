@@ -15,9 +15,8 @@ ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = ROOT / "pages" / "index.html"
 
 # URL da foto do Arnold pra celebrar meta de proteina batida.
-# Troque pela URL que quiser (Imgur, Wikipedia commons, ou um arquivo em pages/assets/).
-# Vazio = mostra só o texto sem imagem.
-ARNOLD_IMG_URL = ""
+# Servida pelo MCP server via Mount em /dashboard-assets/ (arquivo em assets/).
+ARNOLD_IMG_URL = "/dashboard-assets/arnold.jpg"
 
 
 def _barra_progresso(valor: float, meta: float, cor: str) -> str:

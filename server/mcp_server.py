@@ -27,7 +27,8 @@ from typing import Any, Optional
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.responses import HTMLResponse, PlainTextResponse
-from starlette.routing import Route
+from starlette.routing import Mount, Route
+from starlette.staticfiles import StaticFiles
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -291,3 +292,6 @@ async def _health(_):
 app = mcp.streamable_http_app()
 app.routes.append(Route("/dashboard/{secret}", _dashboard_handler))
 app.routes.append(Route("/health", _health))
+app.routes.append(Mount("/dashboard-assets",
+                        app=StaticFiles(directory=str(ROOT / "assets")),
+                        name="dashboard-assets"))
