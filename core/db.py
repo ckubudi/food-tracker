@@ -73,7 +73,12 @@ if USE_PG:
 
     @contextmanager
     def conn() -> Iterator["psycopg.Connection"]:
-        with psycopg.connect(DATABASE_URL, row_factory=dict_row) as c:
+        # prepare_threshold=None desabilita prepared statements.
+        # Necessário com Supabase pooler em modo transaction: o pooler reusa
+        # conexões físicas, então PREPAREd statements de uma sessão "vazam"
+        # pra próxima e dão "prepared statement already exists".
+        with psycopg.connect(DATABASE_URL, row_factory=dict_row,
+                             prepare_threshold=None) as c:
             yield c
 
     PH = "%s"  # placeholder Postgres
