@@ -14,9 +14,9 @@ from core.settings import get_metas, get_user_name
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = ROOT / "pages" / "index.html"
 
-# URL da foto do Arnold pra celebrar meta de proteina batida.
-# Servida pelo MCP server via Mount em /dashboard-assets/ (arquivo em assets/).
+# Imagens servidas pelo MCP server via Mount em /dashboard-assets/ (arquivos em assets/).
 ARNOLD_IMG_URL = "/dashboard-assets/arnold.jpg"
+GORDINHO_IMG_URL = "/dashboard-assets/gordinho.jpg"
 
 
 def _barra_progresso(valor: float, meta: float, cor: str) -> str:
@@ -229,10 +229,21 @@ h3 { color: #3949ab; margin-top: 22px; font-size: 1.1em; }
                            object-fit: cover; flex-shrink: 0; }
 .protein-win .protein-msg { color: #1b5e20; font-size: 1.05em; line-height: 1.4; }
 .protein-win .protein-msg strong { font-size: 1.3em; letter-spacing: .5px; }
+.kcal-over { display: flex; align-items: center; gap: 14px;
+             background: linear-gradient(90deg, #fff3e0, #ffebee);
+             border: 2px solid #c62828; border-radius: 10px;
+             padding: 14px 18px; margin: 16px 0;
+             box-shadow: 0 2px 6px rgba(198,40,40,.15); }
+.kcal-over .gordinho-img { height: 90px; width: auto; border-radius: 8px;
+                           object-fit: cover; flex-shrink: 0; }
+.kcal-over .kcal-msg { color: #b71c1c; font-size: 1.05em; line-height: 1.4; }
+.kcal-over .kcal-msg strong { font-size: 1.05em; font-style: italic;
+                              display: block; margin-bottom: 4px; }
 @media (max-width: 600px) {
-  .protein-win { padding: 10px 12px; gap: 10px; }
-  .protein-win .arnold-img { height: 64px; }
-  .protein-win .protein-msg { font-size: .95em; }
+  .protein-win, .kcal-over { padding: 10px 12px; gap: 10px; }
+  .protein-win .arnold-img, .kcal-over .gordinho-img { height: 64px; }
+  .protein-win .protein-msg, .kcal-over .kcal-msg { font-size: .95em; }
+  .kcal-over .kcal-msg strong { font-size: .95em; }
 }
 .conclusion { background: #e8eaf6; border-left: 4px solid #1a237e;
               padding: 12px 16px; margin: 16px 0; border-radius: 4px; font-size: .95em; }
@@ -273,6 +284,20 @@ def _banner_proteina_batida(prot: float, meta: float) -> str:
             f'</div></div>')
 
 
+def _banner_kcal_excedida(kcal: float, meta: float) -> str:
+    if not meta or kcal <= meta:
+        return ""
+    img = (f'<img src="{GORDINHO_IMG_URL}" alt="Gordinho" '
+           f'class="gordinho-img">') if GORDINHO_IMG_URL else ""
+    excesso = kcal - meta
+    return (f'<div class="kcal-over">{img}'
+            f'<div class="kcal-msg">'
+            f'<strong>"Quer X-burger, quer X-bacon, vai gordinho balança os peitos!"</strong><br>'
+            f'Meta de calorias estourada: {kcal:.0f} / {meta:.0f} kcal '
+            f'(+{excesso:.0f})'
+            f'</div></div>')
+
+
 def _bloco_dia(totais: dict, refs: list, metas: dict) -> str:
     return f"""<div class="metric-grid">
 {_html_metric("Calorias", totais["kcal"], metas["kcal"], " kcal", "#3949ab")}
@@ -282,6 +307,7 @@ def _bloco_dia(totais: dict, refs: list, metas: dict) -> str:
 {_html_metric("Fibra", totais["fibra_g"], metas["fibra_g"], "g", "#6a1b9a")}
 </div>
 {_banner_proteina_batida(totais["proteina_g"], metas["proteina_g"])}
+{_banner_kcal_excedida(totais["kcal"], metas["kcal"])}
 <h3>Refeições</h3>
 {_html_tabela_refeicoes(refs)}"""
 
