@@ -203,6 +203,35 @@ def refeicoes_do_dia(dia: str) -> "list[dict]":
         return refs
 
 
+def refeicoes_e_itens_periodo(n_dias: int) -> dict:
+    """Retorna {dia_iso: [refeicoes com itens embutidos]} para os últimos N dias.
+    Faz apenas 2 queries (refeicoes + itens), agrupa em Python.
+    Use quando precisar de muitos dias — evita N+1 queries."""
+    cutoff = (date.today() - timedelta(days=n_dias)).isoformat()
+    with conn() as c:
+        refs = [_normalize(r) for r in c.execute(
+            f"SELECT * FROM refeicoes WHERE dia >= {PH} ORDER BY dia, timestamp",
+            (cutoff,)
+        )]
+        if not refs:
+            return {}
+        ids = [r["id"] for r in refs]
+        placeholders = ",".join([PH] * len(ids))
+        itens = [_normalize(i) for i in c.execute(
+            f"SELECT * FROM itens WHERE refeicao_id IN ({placeholders})", tuple(ids)
+        )]
+
+    itens_por_ref = {}
+    for it in itens:
+        itens_por_ref.setdefault(it["refeicao_id"], []).append(it)
+
+    por_dia = {}
+    for r in refs:
+        r["itens"] = itens_por_ref.get(r["id"], [])
+        por_dia.setdefault(r["dia"], []).append(r)
+    return por_dia
+
+
 def total_do_dia(dia: str) -> dict:
     with conn() as c:
         row = c.execute(

@@ -263,6 +263,7 @@ def gerar_html() -> str:
 
     hoje = hoje_local()
     por_dia = db.serie_historica(30)
+    refs_por_dia = db.refeicoes_e_itens_periodo(30)
     agora = _now_local().strftime("%d/%m/%Y %H:%M")
 
     hoje_d = _now_local().date()
@@ -271,7 +272,7 @@ def gerar_html() -> str:
     blocos = []
     for d in dias_lista:
         totais = por_dia.get(d) or _TOTAL_VAZIO
-        refs = db.refeicoes_do_dia(d)
+        refs = refs_por_dia.get(d, [])
         hidden = "" if d == hoje else "hidden"
         blocos.append(
             f'<div class="day-view" data-dia="{d}" {hidden}>'
