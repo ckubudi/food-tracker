@@ -46,8 +46,20 @@ create table if not exists cache_nutricao (
     criado_em   timestamptz not null default now()
 );
 
+create table if not exists metas (
+    id              int primary key default 1,
+    kcal            double precision,
+    proteina_g      double precision,
+    carbo_g         double precision,
+    gordura_g       double precision,
+    fibra_g         double precision,
+    atualizado_em   timestamptz not null default now(),
+    constraint metas_singleton check (id = 1)
+);
+
 -- RLS: tabelas privadas (apenas service_role acessa via Vercel).
 -- Se quiser dashboard público, criar policy SELECT pra anon depois.
 alter table refeicoes      enable row level security;
 alter table itens          enable row level security;
 alter table cache_nutricao enable row level security;
+alter table metas          enable row level security;

@@ -128,6 +128,11 @@ def init():
     CREATE TABLE IF NOT EXISTS cache_nutricao (
         chave TEXT PRIMARY KEY, dados_json TEXT NOT NULL, criado_em TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS metas (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        kcal REAL, proteina_g REAL, carbo_g REAL, gordura_g REAL, fibra_g REAL,
+        atualizado_em TEXT NOT NULL
+    );
     """
     with conn() as c:
         c.executescript(schema_sqlite)
@@ -313,6 +318,54 @@ def cache_set(tipo: str, nome: str, dados: dict):
                    VALUES (?, ?, ?)""",
                 (chave, payload, now)
             )
+
+
+_META_KEYS = ("kcal", "proteina_g", "carbo_g", "gordura_g", "fibra_g")
+
+
+def get_metas_db() -> Optional[dict]:
+    """Lê metas da tabela `metas` (id=1). Retorna None se não houver row
+    ou se todos os campos forem null."""
+    with conn() as c:
+        row = c.execute(
+            f"SELECT {', '.join(_META_KEYS)} FROM metas WHERE id=1"
+        ).fetchone()
+        if not row:
+            return None
+        d = {k: row[k] for k in _META_KEYS}
+        if all(v is None for v in d.values()):
+            return None
+        return {k: v for k, v in d.items() if v is not None}
+
+
+def set_metas_db(metas: dict) -> dict:
+    """Upsert da row de metas (id=1). Faz merge: campos não passados
+    (ou com valor None) preservam o valor anterior. Retorna o estado final."""
+    atual = get_metas_db() or {}
+    novos = {k: v for k, v in metas.items() if k in _META_KEYS and v is not None}
+    merged = {**atual, **novos}
+    now = datetime.now().isoformat(timespec="seconds")
+    vals = tuple(merged.get(k) for k in _META_KEYS)
+    with conn() as c:
+        if USE_PG:
+            c.execute(
+                f"""INSERT INTO metas (id, kcal, proteina_g, carbo_g, gordura_g,
+                        fibra_g, atualizado_em)
+                    VALUES (1, {', '.join([PH]*6)})
+                    ON CONFLICT (id) DO UPDATE SET
+                        kcal=EXCLUDED.kcal, proteina_g=EXCLUDED.proteina_g,
+                        carbo_g=EXCLUDED.carbo_g, gordura_g=EXCLUDED.gordura_g,
+                        fibra_g=EXCLUDED.fibra_g, atualizado_em=EXCLUDED.atualizado_em""",
+                vals + (now,)
+            )
+        else:
+            c.execute(
+                """INSERT OR REPLACE INTO metas (id, kcal, proteina_g, carbo_g,
+                       gordura_g, fibra_g, atualizado_em)
+                   VALUES (1, ?, ?, ?, ?, ?, ?)""",
+                vals + (now,)
+            )
+    return merged
 
 
 if __name__ == "__main__":

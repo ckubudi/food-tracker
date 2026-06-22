@@ -30,7 +30,7 @@ def _load_config_file() -> dict:
     return {}
 
 
-def get_metas() -> dict:
+def _metas_estaticas() -> dict:
     """METAS_JSON env var > config.json > default."""
     env = os.environ.get("METAS_JSON")
     if env:
@@ -40,6 +40,23 @@ def get_metas() -> dict:
             raise SystemExit(f"METAS_JSON inválido: {e}")
     cfg = _load_config_file()
     return cfg.get("metas_diarias", _DEFAULT_METAS)
+
+
+def get_metas() -> dict:
+    """Tabela `metas` no DB > METAS_JSON env var > config.json > default.
+
+    O DB ganha prioridade pra permitir edição via tool MCP (set_metas).
+    Campos não definidos no DB caem no fallback estático.
+    """
+    base = _metas_estaticas()
+    try:
+        from core import db  # import lazy: db importa settings indiretamente em alguns fluxos
+        db_metas = db.get_metas_db()
+    except Exception:
+        db_metas = None
+    if db_metas:
+        return {**base, **db_metas}
+    return base
 
 
 def get_user_name() -> str:

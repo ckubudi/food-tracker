@@ -8,6 +8,7 @@ Expõe tools pro Claude app:
   - desfazer_ultima
   - serie_historica
   - get_metas
+  - set_metas
   - buscar_alimento_taco
   - buscar_alimento_off
 
@@ -254,6 +255,36 @@ def serie_historica(n_dias: int = 7) -> dict:
 @mcp.tool(name="get_metas")
 def _tool_get_metas() -> dict:
     """Retorna metas diárias configuradas."""
+    return get_metas()
+
+
+@mcp.tool()
+def set_metas(
+    kcal: Optional[float] = None,
+    proteina_g: Optional[float] = None,
+    carbo_g: Optional[float] = None,
+    gordura_g: Optional[float] = None,
+    fibra_g: Optional[float] = None,
+) -> dict:
+    """Atualiza metas diárias (persistido no DB). Use pra ajustar objetivo via app.
+
+    Só os campos passados são atualizados — os demais preservam o valor anterior.
+    Após a primeira chamada, o DB passa a ter prioridade sobre a env var
+    METAS_JSON pros campos que você setou.
+
+    Args:
+        kcal: meta de calorias por dia.
+        proteina_g: meta de proteína em gramas.
+        carbo_g: meta de carboidrato em gramas.
+        gordura_g: meta de gordura em gramas.
+        fibra_g: meta de fibra em gramas.
+
+    Retorna o conjunto final de metas (após merge com os valores anteriores).
+    """
+    db.set_metas_db({
+        "kcal": kcal, "proteina_g": proteina_g, "carbo_g": carbo_g,
+        "gordura_g": gordura_g, "fibra_g": fibra_g,
+    })
     return get_metas()
 
 
