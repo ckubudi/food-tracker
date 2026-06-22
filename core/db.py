@@ -101,8 +101,29 @@ else:
 
 
 def init():
-    """Cria tabelas (idempotente). No Postgres, prefira rodar db/schema.sql via Studio."""
+    """Cria tabelas (idempotente).
+
+    SQLite: cria o schema completo.
+    Postgres: roda só CREATE TABLE IF NOT EXISTS pra tabelas que foram adicionadas
+    depois do bootstrap inicial (ex: `metas`). O schema base (refeicoes/itens/
+    cache_nutricao) é assumido como já existente — quem provisionou o Supabase
+    original aplicou via db/schema.sql.
+    """
     if USE_PG:
+        with conn() as c:
+            c.execute(
+                """CREATE TABLE IF NOT EXISTS metas (
+                    id              int primary key default 1,
+                    kcal            double precision,
+                    proteina_g      double precision,
+                    carbo_g         double precision,
+                    gordura_g       double precision,
+                    fibra_g         double precision,
+                    atualizado_em   timestamptz not null default now(),
+                    constraint metas_singleton check (id = 1)
+                )"""
+            )
+            c.execute("ALTER TABLE metas ENABLE ROW LEVEL SECURITY")
         return
     schema_sqlite = """
     CREATE TABLE IF NOT EXISTS refeicoes (
